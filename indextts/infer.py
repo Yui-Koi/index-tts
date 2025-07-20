@@ -274,6 +274,21 @@ class IndexTTS:
         if self.gr_progress is not None:
             self.gr_progress(value, desc=desc)
 
+    def _get_conditioning_mel(self, audio_prompt, verbose=False):
+        if self.cache_cond_mel is None or self.cache_audio_prompt != audio_prompt:
+            audio, sr = torchaudio.load(audio_prompt)
+            audio = torch.mean(audio, dim=0, keepdim=True)
+            if audio.shape[0] > 1:
+                audio = audio[0].unsqueeze(0)
+            audio = torchaudio.transforms.Resample(sr, 24000)(audio)
+            cond_mel = MelSpectrogramFeatures()(audio).to(self.device)
+            if verbose:
+                print(f"cond_mel shape: {cond_mel.shape}", "dtype:", cond_mel.dtype)
+
+            self.cache_audio_prompt = audio_prompt
+            self.cache_cond_mel = cond_mel
+        return self.cache_cond_mel
+
     # 快速推理：对于“多句长文本”，可实现至少 2~10 倍以上的速度提升~ （First modified by sunnyboxs 2025-04-16）
     def infer_fast(self, audio_prompt, text, output_path, verbose=False, max_text_tokens_per_sentence=100, sentences_bucket_max_size=4, **generation_kwargs):
         """
@@ -292,25 +307,8 @@ class IndexTTS:
             print(f"origin text:{text}")
         start_time = time.perf_counter()
 
-        # 如果参考音频改变了，才需要重新生成 cond_mel, 提升速度
-        if self.cache_cond_mel is None or self.cache_audio_prompt != audio_prompt:
-            audio, sr = torchaudio.load(audio_prompt)
-            audio = torch.mean(audio, dim=0, keepdim=True)
-            if audio.shape[0] > 1:
-                audio = audio[0].unsqueeze(0)
-            audio = torchaudio.transforms.Resample(sr, 24000)(audio)
-            cond_mel = MelSpectrogramFeatures()(audio).to(self.device)
-            cond_mel_frame = cond_mel.shape[-1]
-            if verbose:
-                print(f"cond_mel shape: {cond_mel.shape}", "dtype:", cond_mel.dtype)
-
-            self.cache_audio_prompt = audio_prompt
-            self.cache_cond_mel = cond_mel
-        else:
-            cond_mel = self.cache_cond_mel
-            cond_mel_frame = cond_mel.shape[-1]
-            pass
-
+        cond_mel = self._get_conditioning_mel(audio_prompt, verbose=verbose)
+        cond_mel_frame = cond_mel.shape[-1]
         auto_conditioning = cond_mel
         cond_mel_lengths = torch.tensor([cond_mel_frame], device=self.device)
 
@@ -504,24 +502,8 @@ class IndexTTS:
             print(f"origin text:{text}")
         start_time = time.perf_counter()
 
-        # 如果参考音频改变了，才需要重新生成 cond_mel, 提升速度
-        if self.cache_cond_mel is None or self.cache_audio_prompt != audio_prompt:
-            audio, sr = torchaudio.load(audio_prompt)
-            audio = torch.mean(audio, dim=0, keepdim=True)
-            if audio.shape[0] > 1:
-                audio = audio[0].unsqueeze(0)
-            audio = torchaudio.transforms.Resample(sr, 24000)(audio)
-            cond_mel = MelSpectrogramFeatures()(audio).to(self.device)
-            cond_mel_frame = cond_mel.shape[-1]
-            if verbose:
-                print(f"cond_mel shape: {cond_mel.shape}", "dtype:", cond_mel.dtype)
-
-            self.cache_audio_prompt = audio_prompt
-            self.cache_cond_mel = cond_mel
-        else:
-            cond_mel = self.cache_cond_mel
-            cond_mel_frame = cond_mel.shape[-1]
-            pass
+        cond_mel = self._get_conditioning_mel(audio_prompt, verbose=verbose)
+        cond_mel_frame = cond_mel.shape[-1]
 
         self._set_gr_progress(0.1, "text processing...")
         auto_conditioning = cond_mel
