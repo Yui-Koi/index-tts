@@ -323,7 +323,6 @@ class IndexTTS:
         top_p = generation_kwargs.pop("top_p", 0.8)
         top_k = generation_kwargs.pop("top_k", 30)
         temperature = generation_kwargs.pop("temperature", 1.0)
-        autoregressive_batch_size = generation_kwargs.pop("autoregressive_batch_size", 4)
         length_penalty = generation_kwargs.pop("length_penalty", 0.0)
         num_beams = generation_kwargs.pop("num_beams", 3)
         repetition_penalty = generation_kwargs.pop("repetition_penalty", 10.0)
@@ -385,7 +384,7 @@ class IndexTTS:
                                         top_p=top_p,
                                         top_k=top_k,
                                         temperature=temperature,
-                                        num_return_sequences=autoregressive_batch_size,
+                                        num_return_sequences=batch_num,
                                         length_penalty=length_penalty,
                                         num_beams=num_beams,
                                         repetition_penalty=repetition_penalty,

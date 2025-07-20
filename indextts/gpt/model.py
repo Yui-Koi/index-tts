@@ -609,9 +609,12 @@ class UnifiedVoice(nn.Module):
         single_cond = conditional_latents.ndim == 3 and conditional_latents.shape[0] == 1
         if not single_cond:
             assert conditional_latents.shape[0] == b, f"batch size mismatch: {conditional_latents.shape[0]} vs {b}"
-        batched_mel_emb = []
-        attention_masks = []
-        target_len = conditional_latents.shape[1] + L + 2
+        # [b, s, dim]
+        batched_mel_emb = torch.zeros((b, conditional_latents.shape[1] + L + 2, conditional_latents.shape[2]),
+                                      dtype=conditional_latents.dtype, device=device)
+        # [b, s+1]
+        attention_mask = torch.ones((b, conditional_latents.shape[1] + L + 3), dtype=torch.long, device=device)
+
         for i in range(b):
             valid_mask = (text_inputs[i] != self.stop_text_token) & (text_inputs[i] != self.start_text_token)
             text_input = text_inputs[i][valid_mask]
@@ -620,27 +623,19 @@ class UnifiedVoice(nn.Module):
             text_input_pos = torch.arange(0, text_input.size(-1), device=device)
             text_emb = self.text_embedding(text_input) + self.text_pos_embedding.emb(text_input_pos)
             # concatenate [conditional latents][text embeddings]
-            conds_text_emb = [
-                conditional_latents.squeeze(0) if single_cond else conditional_latents[i],
-                text_emb,
-            ]
             # +1 for the start_mel_token
-            attention_mask = torch.ones(target_len+1, dtype=torch.long, device=device)
             # check this text input is padded
             padding: int = L + 2 - text_input.size(-1)
             # pad left of [cond][text] -> [pad][cond][text]
             if padding > 0:
-                pad = torch.zeros((padding, conditional_latents.size(-1)), dtype=text_emb.dtype, device=device) # [p, dim]
-                conds_text_emb.insert(0, pad)
-                attention_mask[:padding] = 0
-            mel_emb = torch.cat(conds_text_emb) #[s, dim]
-            assert mel_emb.shape[0] == target_len, f"mel_emb.shape: {mel_emb.shape}, target_len: {target_len}"
-            batched_mel_emb.append(mel_emb)
-            attention_masks.append(attention_mask)
-        # [b, s, dim]
-        batched_mel_emb = torch.stack(batched_mel_emb, dim=0)
-        # [b, s+1]
-        attention_mask = torch.stack(attention_masks, dim=0)
+                attention_mask[i, :padding] = 0
+
+            conds_text_emb = torch.cat([
+                conditional_latents.squeeze(0) if single_cond else conditional_latents[i],
+                text_emb,
+            ], dim=0)
+
+            batched_mel_emb[i, padding:] = conds_text_emb
         # [b, s+1]
         fake_inputs = torch.ones(
             (
@@ -694,6 +689,8 @@ class UnifiedVoice(nn.Module):
                 raise ValueError(f"`typical_mass` has to be a float > 0 and < 1, but is {typical_mass}")
             min_tokens_to_keep = 2 if hf_generate_kwargs.get("num_beams", 1) > 1 else 1
             logits_processor.append(TypicalLogitsWarper(mass=typical_mass, min_tokens_to_keep=min_tokens_to_keep))
+        else:
+            logits_processor.append(TopKLogitsWarper(30))
         max_length = (trunc_index + self.max_mel_tokens - 1) if max_generate_length is None else trunc_index + max_generate_length
         output = self.inference_model.generate(inputs, 
                                             bos_token_id=self.start_mel_token, pad_token_id=self.stop_mel_token,
