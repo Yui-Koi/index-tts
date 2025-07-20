@@ -17,11 +17,16 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 from indextts.BigVGAN.models import BigVGAN as Generator
 from indextts.gpt.model import UnifiedVoice
+import logging
+from indextts.utils.logging_config import setup_logging
 from indextts.utils.checkpoint import load_checkpoint
 from indextts.utils.feature_extractors import MelSpectrogramFeatures
 from indextts.utils.config import TTSConfig, TTSRequest
 
 from indextts.utils.front import TextNormalizer, TextTokenizer
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 class IndexTTS:
@@ -52,7 +57,9 @@ class IndexTTS:
             self.device = "cpu"
             self.is_fp16 = False
             self.use_cuda_kernel = False
-            print(">> Be patient, it may take a while to run in CPU mode.")
+            logger.info("Running in CPU mode, this will be slow.")
+
+        logger.info(f"Initializing IndexTTS with device: {self.device}, fp16: {self.is_fp16}, use_cuda_kernel: {self.use_cuda_kernel}")
 
         self.cfg = OmegaConf.load(cfg_path)
         self.model_dir = model_dir
@@ -329,11 +336,11 @@ class IndexTTS:
             # 直接保存音频到指定路径中
             if os.path.isfile(output_path):
                 os.remove(output_path)
-                print(">> remove old wav file:", output_path)
+                logger.info(f"Removed old wav file: {output_path}")
             if os.path.dirname(output_path) != "":
                 os.makedirs(os.path.dirname(output_path), exist_ok=True)
             torchaudio.save(output_path, wav.type(torch.int16), sampling_rate)
-            print(">> wav file saved to:", output_path)
+            logger.info(f"Wav file saved to: {output_path}")
             return output_path
         else:
             # 返回以符合Gradio的格式要求
@@ -352,11 +359,11 @@ class IndexTTS:
                 - 越小，bucket数量越多，batch越少，推理速度越*慢*，占用内存和质量更接近于非快速推理
         """
         config = TTSConfig(**request.generation_kwargs)
-        print(">> start fast inference...")
+        logger.info(f"Starting fast inference for text: \"{request.text}\"")
 
         self._set_gr_progress(0, "start fast inference...")
         if request.verbose:
-            print(f"origin text:{request.text}")
+            logger.info(f"origin text:{request.text}")
         start_time = time.perf_counter()
 
         cond_mel = self._get_conditioning_mel(request.audio_prompt, verbose=request.verbose)
@@ -474,21 +481,17 @@ class IndexTTS:
             for i in range(batch_codes.shape[0]):
                 codes = batch_codes[i]  # [x]
                 if not has_warned and codes[-1] != self.stop_mel_token:
-                    warnings.warn(
-                        f"WARN: generation stopped due to exceeding `max_mel_tokens` ({generation_kwargs.get('max_mel_tokens', 600)}). "
-                        f"Consider reducing `max_text_tokens_per_sentence`({generation_kwargs.get('max_text_tokens_per_sentence', 100)}) or increasing `max_mel_tokens`.",
-                        category=RuntimeWarning
+                    logger.warning(
+                        f"Generation stopped due to exceeding `max_mel_tokens` ({generation_kwargs.get('max_mel_tokens', 600)}). "
+                        f"Consider reducing `max_text_tokens_per_sentence`({generation_kwargs.get('max_text_tokens_per_sentence', 100)}) or increasing `max_mel_tokens`."
                     )
                     has_warned = True
                 codes = codes.unsqueeze(0)  # [x] -> [1, x]
                 if verbose:
-                    print("codes:", codes.shape)
-                    print(codes)
+                    logger.info(f"codes shape: {codes.shape}")
                 codes, code_lens = self.remove_long_silence(codes, silent_token=52, max_consecutive=30)
                 if verbose:
-                    print("fix codes:", codes.shape)
-                    print(codes)
-                    print("code_lens:", code_lens)
+                    logger.info(f"fix codes shape: {codes.shape}")
                 text_tokens = batch_tokens[i]
                 all_idxs.append(batch_sentences[i]["idx"])
                 m_start_time = time.perf_counter()
@@ -496,15 +499,17 @@ class IndexTTS:
                 gpt_forward_time += time.perf_counter() - m_start_time
                 all_latents.append(latent)
         del all_batch_codes, all_text_tokens, all_sentences
+        logger.info(f"GPT generation time: {gpt_gen_time:.2f} seconds")
+        logger.info(f"GPT forward time: {gpt_forward_time:.2f} seconds")
         return all_latents, gpt_gen_time, gpt_forward_time
 
     # 原始推理模式
     def infer(self, request: TTSRequest):
         config = TTSConfig(**request.generation_kwargs)
-        print(">> start inference...")
+        logger.info(f"Starting inference for text: \"{request.text}\"")
         self._set_gr_progress(0, "start inference...")
         if request.verbose:
-            print(f"origin text:{request.text}")
+            logger.info(f"origin text:{request.text}")
         start_time = time.perf_counter()
 
         cond_mel = self._get_conditioning_mel(request.audio_prompt, verbose=request.verbose)
