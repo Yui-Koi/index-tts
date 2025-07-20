@@ -41,7 +41,7 @@ class IndexTTS:
             self.use_cuda_kernel = use_cuda_kernel is not None and use_cuda_kernel and device.startswith("cuda")
         elif torch.cuda.is_available():
             self.device = "cuda:0"
-            self.is_fp16 = is_fp16
+            self.is_fp16 = True
             self.use_cuda_kernel = use_cuda_kernel is None or use_cuda_kernel
         elif hasattr(torch, "mps") and torch.backends.mps.is_available():
             self.device = "mps"
@@ -80,19 +80,17 @@ class IndexTTS:
         else:
             self.gpt.eval()
         print(">> GPT weights restored from:", self.gpt_path)
+        use_deepspeed = False
         if self.is_fp16:
             try:
                 import deepspeed
-
                 use_deepspeed = True
             except (ImportError, OSError, CalledProcessError) as e:
-                use_deepspeed = False
-                print(f">> DeepSpeed加载失败，回退到标准推理: {e}")
-                print("See more details https://www.deepspeed.ai/tutorials/advanced-install/")
+                print(f">> DeepSpeed not enabled: {e}")
 
             self.gpt.post_init_gpt2_config(use_deepspeed=use_deepspeed, kv_cache=True, half=True)
         else:
-            self.gpt.post_init_gpt2_config(use_deepspeed=False, kv_cache=True, half=False)
+            self.gpt.post_init_gpt2_config(use_deepspeed=use_deepspeed, kv_cache=True, half=False)
 
         if self.use_cuda_kernel:
             # preload the CUDA kernel for BigVGAN
@@ -325,7 +323,7 @@ class IndexTTS:
         top_p = generation_kwargs.pop("top_p", 0.8)
         top_k = generation_kwargs.pop("top_k", 30)
         temperature = generation_kwargs.pop("temperature", 1.0)
-        autoregressive_batch_size = 1
+        autoregressive_batch_size = generation_kwargs.pop("autoregressive_batch_size", 4)
         length_penalty = generation_kwargs.pop("length_penalty", 0.0)
         num_beams = generation_kwargs.pop("num_beams", 3)
         repetition_penalty = generation_kwargs.pop("repetition_penalty", 10.0)
