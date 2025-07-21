@@ -392,7 +392,7 @@ class IndexTTS:
             padded_tensors.append(tensor[:, :max_len])
         return torch.cat(padded_tensors, dim=0)
 
-    def _finalize_audio(self, wav: torch.Tensor, output_path: Optional[str], config: GenerationConfig):""
+    def _finalize_audio(self, wav: torch.Tensor, output_path: Optional[str], config: GenerationConfig):
         # wav: [1, T_samples], convert to int16 on CPU
         wav_int16 = wav.cpu().type(torch.int16)
         if output_path:
