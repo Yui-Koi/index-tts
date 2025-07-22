@@ -20,9 +20,12 @@ class TTSConfig:
     num_beams: int = 3
     repetition_penalty: float = 10.0
     max_mel_tokens: int = 600
-    # fast inference params
-    sentences_bucket_max_size: int = 4
+    # Max tokens per sentence for splitting. Lower for faster batching, higher for closer non-fast quality.
     max_text_tokens_per_sentence: int = 100
-    # other
+    # Max sentences per bucket in fast inference. Larger for faster speed, but more memory.
+    sentences_bucket_max_size: int = 4
     sampling_rate: int = 24000
-    autoregressive_batch_size: int = 1
+    # Token ID for silence. Used for trimming excessive silence.
+    silent_token: int = 52
+    # The maximum number of consecutive silent tokens allowed before trimming.
+    max_consecutive_silence: int = 30
