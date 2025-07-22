@@ -7,8 +7,7 @@ from transformers import (
     GPT2Config, 
     GPT2PreTrainedModel, 
     LogitsProcessorList, 
-    GenerationMixin,
-    TopKLogitsWarper  # FIX: Import the missing LogitsProcessor
+    GenerationMixin
 )
 from transformers.modeling_outputs import CausalLMOutputWithCrossAttentions
 from transformers.utils.model_parallel_utils import (assert_device_map,
@@ -627,7 +626,6 @@ class UnifiedVoice(nn.Module):
         max_length = (trunc_index + self.max_mel_tokens - 1) if max_generate_length is None else trunc_index + max_generate_length
         print(f">> Starting generation with input shape {inputs.shape}, max_length {max_length}...")
         
-        # FIX: Remove the hardcoded TopKLogitsWarper and rely on hf_generate_kwargs
         output = self.inference_model.generate(inputs, 
                                             bos_token_id=self.start_mel_token, pad_token_id=self.stop_mel_token,
                                             eos_token_id=self.stop_mel_token, attention_mask=attention_mask,
