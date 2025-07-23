@@ -81,6 +81,16 @@ class TTSConfig:
     decoder: DecoderConfig
     device: DeviceConfig
 
+@dataclass
+class TTSModelContainer:
+    cfg: dict
+    device: torch.device
+    dtype: torch.dtype
+    gpt: torch.nn.Module
+    bigvgan: torch.nn.Module
+    tokenizer: object
+    audio_processor: object
+
 
 def validate_inference(cfg: InferenceConfig) -> None:
     if not (0.0 <= cfg.top_p <= 1.0):
