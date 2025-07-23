@@ -8,6 +8,7 @@ from dataclasses import replace, asdict
 from operator import itemgetter
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from functools import cached_property
 
 import numpy as np
 import torch
