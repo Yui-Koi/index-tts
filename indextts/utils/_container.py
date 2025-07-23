@@ -9,7 +9,7 @@ import torch
 from omegaconf import DictConfig
 from transformers.integrations import is_deepspeed_available
 
-from indextts.utils.config import TTSConfig, TTSModelContainer
+from .config import TTSConfig, TTSModelContainer
 
 def _load_state(model: torch.nn.Module, path: Path, map_key: str | None = None) -> None:
     state = torch.load(path, map_location="cpu")
