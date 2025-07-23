@@ -20,7 +20,7 @@ from tqdm import tqdm
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
-from indextts.utils.config import TTSConfig, InferenceConfig, DecoderConfig
+from indextts.utils.config import TTSConfig, InferenceConfig, DecoderConfig, DeviceConfig
 from indextts.utils._container import get_container
 from indextts.utils.front import TextNormalizer, TextTokenizer
 
