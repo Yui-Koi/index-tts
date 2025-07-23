@@ -40,7 +40,7 @@ class DeviceConfig:
         cls,
         device: Optional[str] = None,
         use_cuda_kernel: Optional[bool] = None,
-    ) -> DeviceConfig:
+    ) -> 'DeviceConfig':
         if device:
             use_fp16 = device != "cpu"
             return cls(
