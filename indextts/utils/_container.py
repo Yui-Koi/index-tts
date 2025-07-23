@@ -14,7 +14,7 @@ from indextts.utils.config import TTSConfig, TTSModelContainer
 def _load_state(model: torch.nn.Module, path: Path, map_key: str | None = None) -> None:
     state = torch.load(path, map_location="cpu")
     state = state[map_key] if map_key and map_key in state else state
-    model.load_state_dict(state, strict=False)
+    model.load_state_dict(state, strict=True)
 
 def _load_gpt(
     cfg: TTSConfig,
