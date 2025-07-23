@@ -11,7 +11,10 @@ from transformers.integrations import is_deepspeed_available
 
 from indextts.utils.config import TTSConfig, TTSModelContainer
 
-
+def _load_state(model: torch.nn.Module, path: Path, map_key: str | None = None) -> None:
+    state = torch.load(path, map_location="cpu")
+    state = state[map_key] if map_key and map_key in state else state
+    model.load_state_dict(state, strict=False)
 
 def _load_gpt(
     cfg: TTSConfig,
@@ -19,11 +22,10 @@ def _load_gpt(
     hydra_cfg: DictConfig,
 ) -> torch.nn.Module:
     from indextts.gpt.model import UnifiedVoice
-    from indextts.utils.checkpoint import load_checkpoint
 
     model = UnifiedVoice(**hydra_cfg.gpt)
-    load_checkpoint(model, model_dir / hydra_cfg.gpt_checkpoint)
-
+    _load_state(model, model_dir / hydra_cfg.gpt_checkpoint, map_key="model")
+    
     use_fp16 = cfg.device.use_fp16
     if use_fp16:
         model = model.half()
@@ -62,11 +64,8 @@ def _load_bigvgan(
             use_cuda = False
 
     model = Generator(hydra_cfg.bigvgan, use_cuda_kernel=use_cuda)
-    state = torch.load(
-        model_dir / hydra_cfg.bigvgan_checkpoint,
-        map_location="cpu",
-    )
-    model.load_state_dict(state["generator"])
+    _load_state(model, model_dir / hydra_cfg.gpt_checkpoint, map_key="generator")
+    
     model.to(cfg.device.device).eval().remove_weight_norm()
     return model
 
