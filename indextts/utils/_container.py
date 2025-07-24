@@ -64,7 +64,7 @@ def _load_bigvgan(
             use_cuda = False
 
     model = Generator(hydra_cfg.bigvgan, use_cuda_kernel=use_cuda)
-    _load_state(model, model_dir / hydra_cfg.gpt_checkpoint, map_key="generator")
+    _load_state(model, model_dir / hydra_cfg.bigvgan_checkpoint, map_key="generator")
     
     model.to(cfg.device.device).eval().remove_weight_norm()
     return model
