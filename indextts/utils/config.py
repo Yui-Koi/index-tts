@@ -15,7 +15,7 @@ class InferenceConfig:
     length_penalty: float = 0.0
     num_beams: int = 3
     repetition_penalty: float = 10.0
-    max_generate_length: int = 605
+    max_generate_length: int = 600
 
 
 @dataclass(frozen=True)
