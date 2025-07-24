@@ -187,7 +187,7 @@ class IndexTTS:
                 )
                 token_ids = [
                     torch.tensor(
-                        self._container.tokenizer.convert_tokens_to_ids(sent[1]),
+                        self._container.tokenizer.convert_tokens_to_ids(sent),
                         dtype=torch.long,
                         device=self._container.device,
                     ).unsqueeze(0)
