@@ -119,7 +119,7 @@ class IndexTTS:
         elif "mps" in self.device:
             torch.mps.empty_cache()
 
-   def _resolve_cfg(
+    def _resolve_cfg(
         self,
         *,
         inference: Optional[dict[str, Any]] = None,
