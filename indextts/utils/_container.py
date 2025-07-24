@@ -91,9 +91,7 @@ def _load_audio_processor(
     from indextts.utils.feature_extractors import MelSpectrogramFeatures
 
     return MelSpectrogramFeatures(
-        sample_rate=cfg.decoder.sampling_rate,
-        device=device,
-        dtype=dtype,
+        sample_rate=cfg.decoder.sampling_rate
     )
 
 
