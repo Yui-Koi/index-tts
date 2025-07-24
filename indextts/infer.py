@@ -8,7 +8,6 @@ from dataclasses import replace, asdict
 from operator import itemgetter
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-from functools import cached_property
 
 import numpy as np
 import torch
@@ -20,7 +19,7 @@ from tqdm import tqdm
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
-from indextts.utils.config import TTSConfig, InferenceConfig, DecoderConfig, DeviceConfig
+from indextts.utils.config import TTSConfig, InferenceConfig, DecoderConfig
 from indextts.utils._container import get_container
 from indextts.utils.front import TextNormalizer, TextTokenizer
 
@@ -70,6 +69,7 @@ def create_sentence_buckets(
         buckets.append(current)
     return buckets
 
+
 class IndexTTS:
     def __init__(
         self,
@@ -77,15 +77,18 @@ class IndexTTS:
         model_dir: str = "checkpoints",
         device: Optional[str] = None,
         use_cuda_kernel: Optional[bool] = None,
+        tts_config: Optional[TTSConfig] = None,
+        inference_config: Optional[InferenceConfig] = None,
+        decoder_config: Optional[DecoderConfig] = None,
+        device_config: Optional[DeviceConfig] = None,
     ) -> None:
         self.cfg = OmegaConf.load(cfg_path)
         self.model_dir = Path(model_dir)
 
-        device_cfg = DeviceConfig.auto_detect(device, use_cuda_kernel)
-        base_cfg = TTSConfig(
-            inference=InferenceConfig(**self.cfg.inference),
-            decoder=DecoderConfig(**self.cfg.decoder),
-            device=device_cfg,
+        base_cfg = tts_config or TTSConfig(
+            inference=inference_config or InferenceConfig(),
+            decoder=decoder_config or DecoderConfig(),
+            device=device_config or DeviceConfig.auto_detect(device, use_cuda_kernel),
         )
 
         self._container = get_container(base_cfg, self.model_dir, self.cfg)
@@ -116,7 +119,7 @@ class IndexTTS:
         elif "mps" in self.device:
             torch.mps.empty_cache()
 
-    def _resolve_cfg(
+   def _resolve_cfg(
         self,
         *,
         inference: Optional[dict[str, Any]] = None,
